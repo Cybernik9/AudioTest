@@ -16,7 +16,9 @@
 
 @property (weak, nonatomic) IBOutlet UILabel *artistLable;
 @property (weak, nonatomic) IBOutlet UILabel *titleLable;
-@property (weak, nonatomic) IBOutlet UILabel *timeLable;
+
+@property (weak, nonatomic) IBOutlet UILabel *endTimeLable;
+@property (weak, nonatomic) IBOutlet UILabel *beginTimeLable;
 
 @property (weak, nonatomic) IBOutlet UIButton *playStopButton;
 @property (weak, nonatomic) IBOutlet UISlider *musicSlider;

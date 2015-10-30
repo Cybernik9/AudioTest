@@ -11,6 +11,7 @@
 #import "VKSdk.h"
 #import "Cell.h"
 #import "Player.h"
+//#import "VKStorageItem.h"
 //@import AVFoundation;
 
 @interface MusicViewController () <UITableViewDataSource, UITableViewDelegate>
@@ -29,6 +30,8 @@ static NSString* titleMusic;
 static NSString* timeMusic;
 
 static bool isRenewed;
+
+static NSTimer *timer;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -89,21 +92,22 @@ static bool isRenewed;
     [self printArtist:tempAudio.artist printTitle:tempAudio.title printTimeMusic:@"0"];
     [self.playStopButton setBackgroundImage:[UIImage imageNamed:@"stopButton.png"] forState:UIControlStateNormal];
     [self playMusic];
+    [self recreateTimer];
 }
 
-- (void)scrollViewDidScroll:(UIScrollView *)scroll {
-    
-    NSInteger currentOffset = scroll.contentOffset.y;
-    NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
-    
-    // Change 10.0 to adjust the distance from bottom
-    if (maximumOffset - currentOffset <= 10.0 && [self.musicArray count] < self.countMusic && !isRenewed) {
-        
-        [self getMusicFromServer:[self.musicArray count]];
-        
-        isRenewed = YES;
-    }
-}
+//- (void)scrollViewDidScroll:(UIScrollView *)scroll {
+//    
+//    NSInteger currentOffset = scroll.contentOffset.y;
+//    NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
+//    
+//    // Change 10.0 to adjust the distance from bottom
+//    if (maximumOffset - currentOffset <= 10.0 && [self.musicArray count] < self.countMusic && !isRenewed) {
+//        
+//        [self getMusicFromServer:[self.musicArray count]];
+//        
+//        isRenewed = YES;
+//    }
+//}
 
 #pragma mark - My metod
 
@@ -112,8 +116,8 @@ static bool isRenewed;
     NSDictionary* params =
     [NSDictionary dictionaryWithObjectsAndKeys:
      self.ownerId,   @"owner_id",
-     @(15),          @"count",
-     @(offset),      @"offset",
+     //@(15),          @"count",
+     //@(offset),      @"offset",
      nil];
     
     VKRequest * audioReq = [VKApi requestWithMethod:@"audio.get" andParameters:params andHttpMethod:@"GET"];
@@ -121,24 +125,25 @@ static bool isRenewed;
     [audioReq executeWithResultBlock:^(VKResponse * response) {
         NSLog(@"Json result: %@", response.json);
         
-        //VKAudios *audios = [[VKAudios alloc] initWithDictionary:response.json objectClass:VKAudio.class];
-        //self.musicArray = audios.items;
-//        [self.tableView reloadData];
+        VKAudios *audios = [[VKAudios alloc] initWithDictionary:response.json objectClass:VKAudio.class];
+        self.musicArray = audios.items;
+        
+        [self.tableView reloadData];
         
         self.countMusic = [[response.json objectForKey:@"count"] integerValue];
         isRenewed = NO;
         
-        [self.tableView beginUpdates];
-        
-        [self.musicArray addObjectsFromArray:[response.json objectForKey:@"items"]];
-        
-        NSMutableArray* newPaths = [NSMutableArray new];
-        for (NSInteger i = offset; i < [self.musicArray count]; i++) {
-            [newPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
-        }
-        
-        [self.tableView insertRowsAtIndexPaths:newPaths withRowAnimation:UITableViewRowAnimationTop];
-        [self.tableView endUpdates];
+//        [self.tableView beginUpdates];
+//        
+//        [self.musicArray addObjectsFromArray:array];
+//        
+//        NSMutableArray* newPaths = [NSMutableArray new];
+//        for (NSInteger i = offset; i < [array count]; i++) {
+//            [newPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+//        }
+//        
+//        [self.tableView insertRowsAtIndexPaths:newPaths withRowAnimation:UITableViewRowAnimationTop];
+//        [self.tableView endUpdates];
         
     } errorBlock:^(NSError * error) {
         if (error.code != VK_API_ERROR) {
@@ -153,7 +158,7 @@ static bool isRenewed;
 - (void) playMusic {
     
     VKAudio *tempAudio = [self.musicArray objectAtIndex:activeRow];
-    
+    [self recreateTimer];
     [[Player sharedPlayer] playWithStringPath:tempAudio.url];
 }
 
@@ -161,11 +166,11 @@ static bool isRenewed;
 
 - (void) printArtist:(NSString*)artist printTitle:(NSString*)title printTimeMusic:(NSString*)timeMusic1 {
     
-    CGFloat currentTime = [[Player sharedPlayer] currentTime];
+    //CGFloat currentTime = [[Player sharedPlayer] currentTime];
 
     self.artistLable.text = artistMusic = artist;
     self.titleLable.text = titleMusic = title;
-    self.timeLable.text = timeMusic = [self convertTime:currentTime];
+    //self.timeLable.text = timeMusic = [self convertTime:currentTime];
 }
 
 - (void) printBackgroundButton {
@@ -194,12 +199,41 @@ static bool isRenewed;
     return [NSString stringWithFormat:@"%@:%@:%@",strH, strMin, strSec];
 }
 
+- (void)showCurrentTimeChanging {
+    
+    VKAudio *tempAudio = [self.musicArray objectAtIndex:activeRow];
+    
+    CGFloat duration = [tempAudio.duration doubleValue];
+    CGFloat currentTime = [[Player sharedPlayer] currentTime];
+    
+#warning спитати, як тут краще зробити. Зараз по закінченні трека тут викликається метод [self nextTrack:nil];
+    if (duration <= currentTime) {
+        //[self nextTrack:nil];
+        NSLog(@"nextTrack");
+    }
+    
+    self.musicSlider.maximumValue = duration;
+    [self.musicSlider setValue:currentTime animated:YES];
+    
+    self.endTimeLable.text = [self convertTime:duration];
+    self.beginTimeLable.text = [self convertTime:currentTime];
+}
+
+-(void) recreateTimer {
+    
+    if (timer) {
+        [timer invalidate];
+        timer = nil;
+    }
+    timer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(showCurrentTimeChanging) userInfo:nil repeats:YES];
+}
+
 #pragma mark - Action
 
 - (IBAction)actionPlayStopMusic:(id)sender {
     
     if (![[Player sharedPlayer] playerCreated]) {
-        //[self recreateTimer];
+        
         [self playMusic];
 //        currentTrackDict = [self.audioFiles firstObject];
 //        currentTrackIndex = 0;
@@ -215,11 +249,10 @@ static bool isRenewed;
         [self printBackgroundButton];
     }
     else {
+        
         [[Player sharedPlayer] playCurrentAudioTrack];
-
         [self printBackgroundButton];
     }
-    
     
 //    NSUInteger currentUserID = [VKUser currentUser].accessToken.userID;
 //    VKStorageItem *item = [[VKStorage sharedStorage]
@@ -227,17 +260,19 @@ static bool isRenewed;
 //    
 //    NSString *mp3Link = @"https://mp3.vk.com/music/pop/j-lo.mp3";
 //    NSURL *mp3URL = [NSURL URLWithString:mp3Link];
-//    NSData *mp3Data = //mp3 data from request
+//    NSData *mp3Data = [[NSData alloc] initWithContentsOfURL:mp3URL];
 //    
 //    [item.cachedData addCachedData:mp3Data
 //                            forURL:mp3URL
 //                          liveTime:VKCachedDataLiveTimeOneMonth];
+    
 }
 
 - (IBAction)actionSlider:(id)sender {
     
     CMTime sliderValueTime = CMTimeMakeWithSeconds(self.musicSlider.value, 600);
     [[Player sharedPlayer] seekToTime:sliderValueTime];
+    [self showCurrentTimeChanging];
 }
 
 
