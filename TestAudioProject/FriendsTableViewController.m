@@ -7,21 +7,27 @@
 //
 
 #import "FriendsTableViewController.h"
+#import "UIImageView+AFNetworking.h"
 #import "MusicViewController.h"
 #import "VKSdk.h"
 
 @interface FriendsTableViewController () <VKSdkDelegate, UITableViewDataSource>
 
 @property (strong, nonatomic) NSMutableArray* friendsArray;
+@property (assign, nonatomic) NSInteger countFriends;
 
 @end
 
 @implementation FriendsTableViewController
 
 static NSString* ovnerId;
+static bool isRenewed;
+static const NSInteger countUpdateFriends = 15;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
+    
+    self.friendsArray = [[NSMutableArray alloc] init];
     
     [VKSdk initializeWithDelegate:self andAppId:@"5112182"];
     
@@ -31,7 +37,8 @@ static NSString* ovnerId;
         [VKSdk authorize:scope];
     }
     
-    [self getFriendsFromServer];
+    [self getFriendsFromServer:0];
+    //[self getFriendsFromServer:15 offset:15];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -102,10 +109,32 @@ static NSString* ovnerId;
     if (indexPath.row == 0) {
         cell.textLabel.text = @"My music";
         cell.detailTextLabel.text = nil;
-    } else {
+        cell.imageView.image = nil;
+    }
+    else {
+        
         cell.textLabel.text = [[self.friendsArray objectAtIndex:indexPath.row - 1] objectForKey:@"first_name"];
         cell.detailTextLabel.text = [[self.friendsArray objectAtIndex:indexPath.row - 1] objectForKey:@"last_name"];
-        //cell.imageView.image = [[self.friendsArray objectAtIndex:indexPath.row + 1] objectForKey:@"photo_50"];
+        
+        NSString *strUrl = [[self.friendsArray objectAtIndex:indexPath.row - 1] objectForKey:@"photo_50"];
+        NSURL *url = [NSURL URLWithString:strUrl];
+        
+        NSURLRequest* request = [NSURLRequest requestWithURL: url];
+        
+        __weak UITableViewCell* weakCell = cell;
+        
+        cell.imageView.image = nil;
+        
+        [cell.imageView
+         setImageWithURLRequest:request
+         placeholderImage:nil
+         success:^(NSURLRequest *request, NSHTTPURLResponse *response, UIImage *image) {
+             weakCell.imageView.image = image;
+             [weakCell layoutSubviews];
+         }
+         failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error) {
+
+         }];
     }
     
     return cell;
@@ -125,15 +154,30 @@ static NSString* ovnerId;
     [self.navigationController pushViewController:controller animated:YES];
 }
 
+- (void)scrollViewDidScroll:(UIScrollView *)scroll {
+    
+    NSInteger currentOffset = scroll.contentOffset.y;
+    NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
+    
+    // Change 10.0 to adjust the distance from bottom
+    if (maximumOffset - currentOffset <= 10.0 && [self.friendsArray count] < self.countFriends && !isRenewed) {
+        
+        [self getFriendsFromServer:[self.friendsArray count]];
+        
+        isRenewed = YES;
+    }
+}
+
 #pragma mark - MyMetod
 
-- (void) getFriendsFromServer {
+- (void) getFriendsFromServer:(NSInteger)offset {
     
     NSDictionary* params =
     [NSDictionary dictionaryWithObjectsAndKeys:
-     @"name",       @"order",
-     //@(10),         @"count",
-     @"photo_50",   @"fields", nil];
+     @"name",                 @"order",
+     @(countUpdateFriends),   @"count",
+     @(offset),               @"offset",
+     @"photo_50",             @"fields", nil];
     
     VKRequest * audioReq = [[VKApi friends] get:params];
     
@@ -143,9 +187,20 @@ static NSString* ovnerId;
         //self.musicArray = audios.items;
         //[self.tableView reloadData];
         
-        self.friendsArray = [response.json objectForKey:@"items"];
-        [self.tableView reloadData];
+        [self.tableView beginUpdates];
         
+        [self.friendsArray addObjectsFromArray:[response.json objectForKey:@"items"]];
+        self.countFriends = [[response.json objectForKey:@"count"] integerValue];
+        isRenewed = NO;
+        
+        NSMutableArray* newPaths = [NSMutableArray new];
+        for (NSInteger i = offset; i < [self.friendsArray count]; i++) {
+            [newPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+        
+        [self.tableView insertRowsAtIndexPaths:newPaths withRowAnimation:UITableViewRowAnimationTop];
+        [self.tableView endUpdates];
+
     } errorBlock:^(NSError * error) {
         if (error.code != VK_API_ERROR) {
             [error.vkError.request repeat];

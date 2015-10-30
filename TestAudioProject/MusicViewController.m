@@ -15,7 +15,8 @@
 
 @interface MusicViewController () <UITableViewDataSource, UITableViewDelegate>
 
-@property (strong, nonatomic) NSArray* musicArray;
+@property (strong, nonatomic) NSMutableArray* musicArray;
+@property (assign, nonatomic) NSInteger countMusic;
 
 @end
 
@@ -27,6 +28,7 @@ static NSString* artistMusic;
 static NSString* titleMusic;
 static NSString* timeMusic;
 
+static bool isRenewed;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -40,7 +42,7 @@ static NSString* timeMusic;
     [self printArtist:artistMusic printTitle:titleMusic printTimeMusic:timeMusic];
     [self printBackgroundButton];
     
-    [self getMusicFromServer];
+    [self getMusicFromServer:0];
 }
 
 - (void)didReceiveMemoryWarning {
@@ -89,23 +91,54 @@ static NSString* timeMusic;
     [self playMusic];
 }
 
+- (void)scrollViewDidScroll:(UIScrollView *)scroll {
+    
+    NSInteger currentOffset = scroll.contentOffset.y;
+    NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
+    
+    // Change 10.0 to adjust the distance from bottom
+    if (maximumOffset - currentOffset <= 10.0 && [self.musicArray count] < self.countMusic && !isRenewed) {
+        
+        [self getMusicFromServer:[self.musicArray count]];
+        
+        isRenewed = YES;
+    }
+}
+
 #pragma mark - My metod
 
-- (void) getMusicFromServer {
+- (void) getMusicFromServer:(NSInteger)offset {
     
     NSDictionary* params =
     [NSDictionary dictionaryWithObjectsAndKeys:
-     self.ownerId,  @"owner_id",
-     //@(10),         @"count",
+     self.ownerId,   @"owner_id",
+     @(15),          @"count",
+     @(offset),      @"offset",
      nil];
     
     VKRequest * audioReq = [VKApi requestWithMethod:@"audio.get" andParameters:params andHttpMethod:@"GET"];
     
     [audioReq executeWithResultBlock:^(VKResponse * response) {
         NSLog(@"Json result: %@", response.json);
-        VKAudios *audios = [[VKAudios alloc] initWithDictionary:response.json objectClass:VKAudio.class];
-        self.musicArray = audios.items;
-        [self.tableView reloadData];
+        
+        //VKAudios *audios = [[VKAudios alloc] initWithDictionary:response.json objectClass:VKAudio.class];
+        //self.musicArray = audios.items;
+//        [self.tableView reloadData];
+        
+        self.countMusic = [[response.json objectForKey:@"count"] integerValue];
+        isRenewed = NO;
+        
+        [self.tableView beginUpdates];
+        
+        [self.musicArray addObjectsFromArray:[response.json objectForKey:@"items"]];
+        
+        NSMutableArray* newPaths = [NSMutableArray new];
+        for (NSInteger i = offset; i < [self.musicArray count]; i++) {
+            [newPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
+        }
+        
+        [self.tableView insertRowsAtIndexPaths:newPaths withRowAnimation:UITableViewRowAnimationTop];
+        [self.tableView endUpdates];
         
     } errorBlock:^(NSError * error) {
         if (error.code != VK_API_ERROR) {
