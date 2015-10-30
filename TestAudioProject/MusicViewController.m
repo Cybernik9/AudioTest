@@ -46,6 +46,10 @@ static NSTimer *timer;
     [self printBackgroundButton];
     
     [self getMusicFromServer:0];
+    
+    if (activeRow >= 0) {
+        [self recreateTimer];
+    }
 }
 
 - (void)didReceiveMemoryWarning {
@@ -207,9 +211,11 @@ static NSTimer *timer;
     CGFloat currentTime = [[Player sharedPlayer] currentTime];
     
 #warning спитати, як тут краще зробити. Зараз по закінченні трека тут викликається метод [self nextTrack:nil];
-    if (duration <= currentTime) {
+    if (duration <= currentTime+0.1) {
         //[self nextTrack:nil];
         NSLog(@"nextTrack");
+        activeRow++;
+        [self playMusic];
     }
     
     self.musicSlider.maximumValue = duration;
