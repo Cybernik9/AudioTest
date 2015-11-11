@@ -7,7 +7,7 @@
 //
 
 #import "AppDelegate.h"
-#import "VKSdk.h"
+#import <VKSdk/VKSdk.h>
 @import AVFoundation;
 
 @interface AppDelegate ()

@@ -91,7 +91,10 @@
                                 <rect key="frame" x="110" y="65" width="434" height="31"/>
                                 <color key="backgroundColor" white="1" alpha="1" colorSpace="custom" customColorSpace="calibratedWhite"/>
                                 <connections>
+                                    <action selector="actionBeginChangeValue:" destination="e3v-jO-mze" eventType="touchUpInside" id="xgF-DU-cEf"/>
+                                    <action selector="actionEndChangeValue:" destination="e3v-jO-mze" eventType="touchDown" id="xfN-la-bGG"/>
                                     <action selector="actionSlider:" destination="e3v-jO-mze" eventType="valueChanged" id="c29-bc-yS5"/>
+                                    <action selector="actionSliderEndValue:" destination="e3v-jO-mze" eventType="editingDidEndOnExit" id="137-a7-9dl"/>
                                 </connections>
                             </slider>
                             <tableView clipsSubviews="YES" contentMode="scaleToFill" alwaysBounceVertical="YES" dataMode="prototypes" style="plain" separatorStyle="default" rowHeight="44" sectionHeaderHeight="22" sectionFooterHeight="22" translatesAutoresizingMaskIntoConstraints="NO" id="OdS-Gs-enD">
@@ -106,7 +109,7 @@
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="00:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="avr-X2-yfh" userLabel="Begin">
                                 <rect key="frame" x="62" y="66" width="42" height="29"/>
                                 <fontDescription key="fontDescription" type="system" weight="thin" pointSize="15"/>
-                                <color key="textColor" cocoaTouchSystemColor="darkTextColor"/>
+                                <color key="textColor" red="0.0" green="0.0" blue="0.0" alpha="1" colorSpace="calibratedRGB"/>
                                 <nil key="highlightedColor"/>
                             </label>
                             <label opaque="NO" userInteractionEnabled="NO" contentMode="left" horizontalHuggingPriority="251" verticalHuggingPriority="251" text="00:00" textAlignment="center" lineBreakMode="tailTruncation" baselineAdjustment="alignBaselines" adjustsFontSizeToFit="NO" translatesAutoresizingMaskIntoConstraints="NO" id="Rln-UB-BEH" userLabel="End">

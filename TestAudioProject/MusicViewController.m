@@ -8,7 +8,7 @@
 
 #import "MusicViewController.h"
 #import "FriendsTableViewController.h"
-#import "VKSdk.h"
+#import <VKSdk/VKSdk.h>
 #import "Cell.h"
 #import "Player.h"
 //#import "VKStorageItem.h"
@@ -37,12 +37,14 @@ static NSTimer *timer;
     [super viewDidLoad];
     // Do any additional setup after loading the view.
     
+    self.musicArray = [[NSMutableArray alloc] init];
+    
     self.ownerId = [FriendsTableViewController getOvnerId];
     
     self.tableView.dataSource = self;
     self.tableView.delegate = self;
     
-    [self printArtist:artistMusic printTitle:titleMusic printTimeMusic:timeMusic];
+    [self printArtist:artistMusic printTitle:titleMusic];
     [self printBackgroundButton];
     
     [self getMusicFromServer:0];
@@ -93,25 +95,25 @@ static NSTimer *timer;
     
     self.musicSlider.maximumValue = [tempAudio.duration floatValue];
     self.musicSlider.value = 0.f;
-    [self printArtist:tempAudio.artist printTitle:tempAudio.title printTimeMusic:@"0"];
+    [self printArtist:tempAudio.artist printTitle:tempAudio.title];
     [self.playStopButton setBackgroundImage:[UIImage imageNamed:@"stopButton.png"] forState:UIControlStateNormal];
     [self playMusic];
     [self recreateTimer];
 }
 
-//- (void)scrollViewDidScroll:(UIScrollView *)scroll {
-//    
-//    NSInteger currentOffset = scroll.contentOffset.y;
-//    NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
-//    
-//    // Change 10.0 to adjust the distance from bottom
-//    if (maximumOffset - currentOffset <= 10.0 && [self.musicArray count] < self.countMusic && !isRenewed) {
-//        
-//        [self getMusicFromServer:[self.musicArray count]];
-//        
-//        isRenewed = YES;
-//    }
-//}
+- (void)scrollViewDidScroll:(UIScrollView *)scroll {
+    
+    NSInteger currentOffset = scroll.contentOffset.y;
+    NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
+    
+    // Change 10.0 to adjust the distance from bottom
+    if (maximumOffset - currentOffset <= 250.0 && [self.musicArray count] < self.countMusic && !isRenewed) {
+        
+        [self getMusicFromServer:[self.musicArray count]];
+        
+        isRenewed = YES;
+    }
+}
 
 #pragma mark - My metod
 
@@ -120,8 +122,8 @@ static NSTimer *timer;
     NSDictionary* params =
     [NSDictionary dictionaryWithObjectsAndKeys:
      self.ownerId,   @"owner_id",
-     //@(15),          @"count",
-     //@(offset),      @"offset",
+     @(15),          @"count",
+     @(offset),      @"offset",
      nil];
     
     VKRequest * audioReq = [VKApi requestWithMethod:@"audio.get" andParameters:params andHttpMethod:@"GET"];
@@ -130,24 +132,13 @@ static NSTimer *timer;
         NSLog(@"Json result: %@", response.json);
         
         VKAudios *audios = [[VKAudios alloc] initWithDictionary:response.json objectClass:VKAudio.class];
-        self.musicArray = audios.items;
-        
-        [self.tableView reloadData];
         
         self.countMusic = [[response.json objectForKey:@"count"] integerValue];
         isRenewed = NO;
         
-//        [self.tableView beginUpdates];
-//        
-//        [self.musicArray addObjectsFromArray:array];
-//        
-//        NSMutableArray* newPaths = [NSMutableArray new];
-//        for (NSInteger i = offset; i < [array count]; i++) {
-//            [newPaths addObject:[NSIndexPath indexPathForRow:i inSection:0]];
-//        }
-//        
-//        [self.tableView insertRowsAtIndexPaths:newPaths withRowAnimation:UITableViewRowAnimationTop];
-//        [self.tableView endUpdates];
+        [self.musicArray addObjectsFromArray:audios.items];
+        
+        [self.tableView reloadData];
         
     } errorBlock:^(NSError * error) {
         if (error.code != VK_API_ERROR) {
@@ -168,13 +159,10 @@ static NSTimer *timer;
 
 #pragma mark - Print
 
-- (void) printArtist:(NSString*)artist printTitle:(NSString*)title printTimeMusic:(NSString*)timeMusic1 {
-    
-    //CGFloat currentTime = [[Player sharedPlayer] currentTime];
+- (void) printArtist:(NSString*)artist printTitle:(NSString*)title {
 
     self.artistLable.text = artistMusic = artist;
     self.titleLable.text = titleMusic = title;
-    //self.timeLable.text = timeMusic = [self convertTime:currentTime];
 }
 
 - (void) printBackgroundButton {
@@ -210,11 +198,15 @@ static NSTimer *timer;
     CGFloat duration = [tempAudio.duration doubleValue];
     CGFloat currentTime = [[Player sharedPlayer] currentTime];
     
-#warning спитати, як тут краще зробити. Зараз по закінченні трека тут викликається метод [self nextTrack:nil];
-    if (duration <= currentTime+0.1) {
+    if (duration <= (currentTime+0.1)) {
         //[self nextTrack:nil];
         NSLog(@"nextTrack");
         activeRow++;
+        
+        tempAudio = [self.musicArray objectAtIndex:activeRow];
+        artistMusic = tempAudio.artist;
+        titleMusic = tempAudio.title;
+        [self printArtist:artistMusic printTitle:titleMusic];
         [self playMusic];
     }
     
@@ -231,7 +223,9 @@ static NSTimer *timer;
         [timer invalidate];
         timer = nil;
     }
-    timer = [NSTimer scheduledTimerWithTimeInterval:1.0 target:self selector:@selector(showCurrentTimeChanging) userInfo:nil repeats:YES];
+    timer = [NSTimer timerWithTimeInterval:1.0 target:self selector:@selector(showCurrentTimeChanging) userInfo:nil repeats:YES];
+    
+    [[NSRunLoop mainRunLoop] addTimer:timer forMode:NSDefaultRunLoopMode];
 }
 
 #pragma mark - Action
@@ -274,11 +268,38 @@ static NSTimer *timer;
     
 }
 
-- (IBAction)actionSlider:(id)sender {
+- (IBAction)actionSlider:(UISlider*)sender {
+    
+    float value = sender.value;
+    float maxValue = sender.maximumValue;
+    
+    if (fabsf(value - maxValue) < FLT_EPSILON)
+    {
+        // hit
+        NSLog(@"NEXT");
+    }
     
     CMTime sliderValueTime = CMTimeMakeWithSeconds(self.musicSlider.value, 600);
     [[Player sharedPlayer] seekToTime:sliderValueTime];
     [self showCurrentTimeChanging];
+}
+
+- (IBAction)actionBeginChangeValue:(id)sender {
+    
+//    CMTime sliderValueTime = CMTimeMakeWithSeconds(self.musicSlider.value, 600);
+//    [[Player sharedPlayer] seekToTime:sliderValueTime];
+    
+    [self actionPlayStopMusic:nil];
+}
+
+- (IBAction)actionEndChangeValue:(id)sender {
+    
+    [self actionPlayStopMusic:nil];
+}
+
+- (IBAction)actionSliderEndValue:(id)sender {
+    
+    NSLog(@"actionSliderEndValue");
 }
 
 

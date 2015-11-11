@@ -25,6 +25,9 @@
 
 - (IBAction)actionPlayStopMusic:(id)sender;
 - (IBAction)actionSlider:(id)sender;
+- (IBAction)actionBeginChangeValue:(id)sender;
+- (IBAction)actionEndChangeValue:(id)sender;
+- (IBAction)actionSliderEndValue:(id)sender;
 
 @end
 

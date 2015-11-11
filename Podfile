@@ -4,8 +4,10 @@
 # use_frameworks!
 
 target 'TestAudioProject' do
+
 pod "VK-ios-sdk"
 pod "AFNetworking"
+
 end
 
 target 'TestAudioProjectTests' do

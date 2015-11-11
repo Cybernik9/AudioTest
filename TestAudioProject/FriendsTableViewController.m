@@ -9,7 +9,7 @@
 #import "FriendsTableViewController.h"
 #import "UIImageView+AFNetworking.h"
 #import "MusicViewController.h"
-#import "VKSdk.h"
+#import <VKSdk/VKSdk.h>
 
 @interface FriendsTableViewController () <VKSdkDelegate, UITableViewDataSource>
 
@@ -22,7 +22,7 @@
 
 static NSString* ovnerId;
 static bool isRenewed;
-static const NSInteger countUpdateFriends = 15;
+static const NSInteger countUpdateFriends = 25;
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -38,7 +38,11 @@ static const NSInteger countUpdateFriends = 15;
     }
     
     [self getFriendsFromServer:0];
-    //[self getFriendsFromServer:15 offset:15];
+    
+//    UIBarButtonItem *revealButtonItem = [[UIBarButtonItem alloc] initWithImage:[UIImage imageNamed:@"reveal-icon.png"]
+//                                                                         style:UIBarButtonItemStylePlain target:revealController action:@selector(revealToggle:)];
+//    
+//    self.navigationItem.leftBarButtonItem = revealButtonItem;
 }
 
 - (void)didReceiveMemoryWarning {
@@ -159,11 +163,9 @@ static const NSInteger countUpdateFriends = 15;
     NSInteger currentOffset = scroll.contentOffset.y;
     NSInteger maximumOffset = scroll.contentSize.height - scroll.frame.size.height;
     
-    // Change 10.0 to adjust the distance from bottom
-    if (maximumOffset - currentOffset <= 10.0 && [self.friendsArray count] < self.countFriends && !isRenewed) {
+    if (maximumOffset - currentOffset <= 250.0 && [self.friendsArray count] < self.countFriends && !isRenewed) {
         
         [self getFriendsFromServer:[self.friendsArray count]];
-        
         isRenewed = YES;
     }
 }
@@ -212,6 +214,7 @@ static const NSInteger countUpdateFriends = 15;
 }
 
 + (NSString*) getOvnerId {
+    
     return ovnerId;
 }
 
